@@ -54,5 +54,9 @@ GridBuilder::new()
 
 Check the [docs](https://docs.rs/egui_grid/latest/egui_grid/) for details and more info on usage.
 
+## Issues
 
+Currently this is feature complete. Bug fixes & optimizations are the only ways this crate will be expanding for the foreseeable future.
+
+While you are free to open an issue, contacting me on the [egui discord server](https://discord.gg/wdkZkEdXks) might be more worth your time.
 
