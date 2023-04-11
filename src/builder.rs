@@ -141,21 +141,6 @@ impl GridBuilder {
         self.add_cells(size, amount, Margin::same(0.)); self
     }
 
-    // Old code
-    // ----------------------------------------
-    // Add a cell to the most recently allocated row, with a custom [`Margin`](https://docs.rs/egui/latest/egui/style/struct.Margin.html). 
-    // Cells allocated using [`Self::cell`] or [`Self::cells`] have a default margin of 0 on all sides.
-    //pub fn m_cell(mut self, size: Size, margin: Margin) -> Self {
-    //    self.add_cells(size, 1, margin); self
-    //}
-
-    // Add multiple cells all with same [`Size`](https://docs.rs/egui_extras/latest/egui_extras/enum.Size.html) to the most recently allocated row, 
-    // all with the same custom [`Margin`](https://docs.rs/egui/latest/egui/style/struct.Margin.html). 
-    //pub fn m_cells(mut self, size: Size, amount: i32, margin: Margin) -> Self {
-    //    self.add_cells(size, amount, margin); self
-    //}
-    // ----------------------------------------
-
     /// Give the most recently allocated cells a custom [`Margin`](https://docs.rs/egui/latest/egui/style/struct.Margin.html).
     /// Can be used after [`Self::cells`] to give multiple cells a margin at once.
     ///
