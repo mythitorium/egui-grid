@@ -1,0 +1,16 @@
+[package]
+name = "egui_grid"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Create grid-based layouts for egui"
+authors = ["Mythitorium"]
+readme = "README.md"
+exclude = [
+    "other/*"
+]
+
+[dependencies]
+egui = "0.21.0"
+egui_extras = "0.21.0"
+# eframe = "0.21.0" # debug & testing
