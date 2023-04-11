@@ -35,7 +35,7 @@ use crate::{
 ///     .new_row(Size::remainder())
 ///     // Batch method, allocate multiple cells at once
 ///     .cells(Size::remainder(), 3)
-///     .show(|mut grid| {
+///     .show(ui, |mut grid| {
 ///         // Cells are represented as they were allocated
 ///         grid.cell(|ui| {
 ///             ui.label("Top row, left cell");
@@ -196,7 +196,7 @@ impl GridBuilder {
     ///     // Despite being called after a batch cell allocation, 
     ///     // ONLY the last cell will have the grid nested
     ///     .nest(nested_grid)
-    ///     .show(|mut grid| {
+    ///     .show(ui, |mut grid| {
     ///         grid.cell(|ui| {
     ///             ui.label("Left cell");
     ///         });
@@ -241,7 +241,8 @@ impl GridBuilder {
     /// Rows are positioned top-to-bottom spanning horizontally, and cells within rows left-to-right.
     ///
     /// The cells of a nested grid will be represented in place of the cell that held it.
-    pub fn show(self, ui: &mut Ui, allocated_space: Rect, grid: impl FnOnce(Grid)) -> Response {
+    pub fn show(self, ui: &mut Ui, grid: impl FnOnce(Grid)) -> Response {
+        let allocated_space = ui.available_rect_before_wrap();
         let rects = self.as_rects(allocated_space);
         let layouts = self.get_all_layouts();
         let mut bounds = Pos2::new(0., 0.);

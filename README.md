@@ -32,7 +32,7 @@ GridBuilder::new()
     .new_row(Size::remainder())
     // Batch method, allocate multiple cells at once
     .cells(Size::remainder(), 3)
-    .show(|mut grid| {
+    .show(ui, |mut grid| {
         // Cells are represented as they were allocated
         grid.cell(|ui| {
             ui.label("Top row, left cell");
