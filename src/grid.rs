@@ -1,4 +1,5 @@
-use egui::{Rect, Pos2, Ui, Layout};
+use egui::{Pos2, Ui};
+use crate::builder::PureCell;
 
 /// A collection of grid cells. 
 ///
@@ -10,18 +11,16 @@ use egui::{Rect, Pos2, Ui, Layout};
 ///
 pub struct Grid<'a, 'b> {
     ui: &'a mut Ui,
-    cells: Vec<Rect>,
-    layouts: Vec<Layout>,
+    cells: Vec<PureCell>,
     pointer: usize,
     bounds: &'b mut Pos2
 }
 
 impl Grid<'_, '_> {
-    pub(crate) fn new<'a>(ui: &'a mut Ui, cells: Vec<Rect>, layouts: Vec<Layout>, bounds: &'a mut Pos2) -> Grid<'a, 'a> {
+    pub(crate) fn new<'a>(ui: &'a mut Ui, cells: Vec<PureCell>, bounds: &'a mut Pos2) -> Grid<'a, 'a> {
         Grid {
             ui: ui,
             cells: cells,
-            layouts: layouts,
             pointer: 0,
             bounds: bounds
         }
@@ -29,19 +28,30 @@ impl Grid<'_, '_> {
 
     /// Add contents to this cell
     pub fn cell(&mut self, add_contents: impl FnOnce(&mut Ui)) {
-        let cell_rect = self.cells[self.pointer];
-        let cell_layout = self.layouts[self.pointer];
+        if self.pointer > self.cells.len()-1 {
+            panic!("Added more `cells` than were pre-allocated ({} pre-allocated)", self.cells.len());
+        }
+
+        let cell = &self.cells[self.pointer];
+        let cell_rect = cell.rect();
+        let cell_layout = cell.layout();
 
         if cell_rect.max.y > self.bounds.y { self.bounds.y = cell_rect.max.y; }
         if cell_rect.max.x > self.bounds.x { self.bounds.x = cell_rect.max.x; }
 
-        add_contents(&mut self.ui.child_ui(cell_rect, cell_layout));
+        let mut child_ui = self.ui.child_ui(cell_rect, cell_layout);
+        if cell.clip() { child_ui.set_clip_rect(cell_rect); }
+        add_contents(&mut child_ui);
         self.pointer += 1;
     }
 
     /// Populate this cell with nothing. It will still take up space in the grid, but will be empty.
     pub fn empty(&mut self) {
-        let cell_rect = self.cells[self.pointer];
+        if self.pointer > self.cells.len()-1 {
+            panic!("Added more `cells` than were pre-allocated ({} pre-allocated)", self.cells.len());
+        }
+
+        let cell_rect = self.cells[self.pointer].rect();
         
         if cell_rect.max.y > self.bounds.y { self.bounds.y = cell_rect.max.y; }
         if cell_rect.max.x > self.bounds.x { self.bounds.x = cell_rect.max.x; }

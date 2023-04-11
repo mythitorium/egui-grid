@@ -1,6 +1,8 @@
+// I took this from egui's source
+// It turns Size into actual tangible numbers and I really really wasn't going to go about remaking this myself
+
 use egui_extras::Size;
 
-// Taken from the egui_extras source
 #[derive(Clone, Default)]
 pub struct Sizing {
     pub(crate) sizes: Vec<Size>,

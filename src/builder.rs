@@ -1,8 +1,8 @@
 use egui::{Rect, Pos2, Vec2, Margin, Align, Ui, Sense, Response, Layout};
 use egui_extras::Size;
 use crate::{
-    sizing::Sizing,
-    grid::*
+    grid::*,
+    helper::*
 };
 
 /// Builder for creating a new [`Grid`].
@@ -57,7 +57,8 @@ pub struct GridBuilder {
     units: Vec<Row>,
     spacing: Vec2,
     row_as_col: bool,
-    creation_cache: Vec<(usize, usize)>
+    creation_cache: Vec<(usize, usize)>,
+    clip: bool
 }
 
 impl GridBuilder {
@@ -67,7 +68,8 @@ impl GridBuilder {
             units: Vec::new(),
             spacing: Vec2::ZERO,
             row_as_col: false,
-            creation_cache: Vec::new()
+            creation_cache: Vec::new(),
+            clip: false
         }
     }
 
@@ -87,6 +89,16 @@ impl GridBuilder {
     /// Inherit spacing from a [`Ui`](https://docs.rs/egui/latest/egui/struct.Ui.html).
     pub fn inherit_spacing(mut self, ui: &mut Ui) -> Self {
         self.spacing = ui.style_mut().spacing.item_spacing.clone();
+        self
+    }
+
+    /// Should we clip the contents of each cell? Default: `false`.
+    ///
+    /// If set to `true`, cells will hide whatever part(s) of any ui that spill outside of the cell's defined area.
+    ///
+    /// This setting will not propagate to nested grids.
+    pub fn clip(mut self, clip: bool) -> Self {
+        self.clip = clip;
         self
     }
 
@@ -243,11 +255,10 @@ impl GridBuilder {
     /// The cells of a nested grid will be represented in place of the cell that held it.
     pub fn show(self, ui: &mut Ui, grid: impl FnOnce(Grid)) -> Response {
         let allocated_space = ui.available_rect_before_wrap();
-        let rects = self.as_rects(allocated_space);
-        let layouts = self.get_all_layouts();
+        let pure_cells = self.into_real_cells(allocated_space);
         let mut bounds = Pos2::new(0., 0.);
 
-        grid(Grid::new(ui, rects, layouts, &mut bounds));
+        grid(Grid::new(ui, pure_cells, &mut bounds));
 
         ui.allocate_rect(Rect{ min: allocated_space.min, max: bounds}, Sense::hover())
     }
@@ -280,18 +291,15 @@ impl GridBuilder {
         }
     }
 
-    /// Turns the input rect into many rects, representing the cells within the grid
-    fn as_rects(&self, whole_rect: Rect) -> Vec<Rect> {
-        let mut rects_final: Vec<Rect> = Vec::new();
-        
+    // Turn sizes into rectangles and build PureCells
+    fn into_real_cells(&self, whole_rect: Rect) -> Vec<PureCell> {
+        let mut cells_final = Vec::new();
+
         let row_lengths = row_set_as_f32(&self.units, &self.spacing.y, &whole_rect.height());
 
         let mut pointer2d = Pos2::new(whole_rect.min.x,whole_rect.min.y);
         let mut row_index = 0;
-        for row_len in row_lengths {
-            // Improve code readability
-            let row = &self.units[row_index];
-
+        for row in self.units.iter() {
             // Get cell sizes
             let cell_lengths = cell_set_as_f32(&row.cells, &self.spacing.x, &whole_rect.width());
 
@@ -308,57 +316,47 @@ impl GridBuilder {
             };
             pointer2d.x += grand_offset;
 
-            let mut index = 0;
-            for cell_len in cell_lengths {
+            let mut cell_index = 0;
+            for cell in row.cells.iter() {
                 // Build the rect
                 let mut rect = Rect {
                     min: pointer2d.clone(),
-                    max: Pos2::new(pointer2d.x + cell_len, pointer2d.y + row_len)
+                    max: Pos2::new(pointer2d.x + cell_lengths[cell_index], pointer2d.y + row_lengths[row_index])
                 };
 
                 // Apply verticality
                 if self.row_as_col { rect = reflect(rect, whole_rect.min); }
 
                 // Apply margins
-                let margin = &(row.cells[index].margin);
+                let margin = &(row.cells[cell_index].margin);
                 rect.min.x += margin.left; rect.min.y += margin.top; 
                 rect.max.x -= margin.right; rect.max.y -= margin.bottom; 
 
                 // Check and handle nested grids
-                match &row.cells[index].group {
-                    Option::Some(grid) => { rects_final.extend(grid.as_rects(rect)); },
-                    Option::None => { rects_final.push(rect); }
+                match &row.cells[cell_index].group {
+                    Option::Some(grid) => { cells_final.extend(grid.into_real_cells(rect)); },
+                    Option::None => { cells_final.push(PureCell::new(cell.get_layout(), self.clip, rect)); }
                 }
 
                 // Update indexes
-                pointer2d.x += cell_len + self.spacing.x;
-                index += 1;
+                pointer2d.x += cell_lengths[cell_index] + self.spacing.x;
+                cell_index += 1;
             }
-
+    
             // Update indexes
             pointer2d.x = whole_rect.min.x.clone();
-            pointer2d.y += row_len + self.spacing.y;
+            pointer2d.y += row_lengths[row_index] + self.spacing.y;
             row_index += 1;
         }
-
-        rects_final
-    }
-
-    pub(crate) fn get_all_layouts(&self) -> Vec<Layout> {
-        let mut layouts: Vec<Layout> = Vec::new();
-        for row in self.units.iter() {
-            for cell in row.cells.iter() {
-                layouts.extend(cell.layout());
-            }
-        }
-        layouts
+    
+        cells_final
     }
 }
 
 // Represents a row of cells. Useless on it's own, must be given to a GridBuilder. 
 #[derive(Clone)]
-struct Row {
-    size: Size,
+pub(crate) struct Row {
+    pub size: Size,
     cells: Vec<Cell>,
     align: Align
 }
@@ -375,8 +373,8 @@ impl Row {
 
 // Internal struct for the grid builder to keep track of the layout details
 #[derive(Clone)]
-struct Cell {
-    size: Size,
+pub(crate) struct Cell {
+    pub size: Size,
     margin: Margin,
     layout: Layout,
     pub group: Option<GridBuilder>,
@@ -392,42 +390,28 @@ impl Cell {
         self.group = Some(grid);
     }
 
-    pub fn edit_margin(&mut self, margin: Margin) {
-        self.margin = margin;
-    }
+    pub fn edit_margin(&mut self, margin: Margin) { self.margin = margin; }
 
-    pub fn edit_layout(&mut self, layout: Layout) {
-        self.layout = layout;
-    }
+    pub fn edit_layout(&mut self, layout: Layout) { self.layout = layout; }
 
-    // Get layouts, accounting for nested grids
-    pub fn layout(&self) -> Vec<Layout> {
-        match &self.group {
-            Option::Some(grid) => { grid.get_all_layouts() },
-            Option::None => { vec![self.layout] }
+    pub fn get_layout(&self) -> Layout { self.layout }
+}
+
+// A cell with prepared info for the Grid to use to display it
+pub(crate) struct PureCell {
+    rect: Rect,
+    layout: Layout,
+    clip: bool
+}
+
+impl PureCell {
+    pub fn new(layout: Layout, clip: bool, rect: Rect) -> PureCell {
+        PureCell {
+            layout: layout, clip: clip, rect: rect
         }
     }
-}
 
-// Moved code to functions so the to rect method doesn't look as cluttered
-fn row_set_as_f32(rows: &Vec<Row>, spacing: &f32, whole: &f32) -> Vec<f32> {
-    let mut row_sizes = Vec::new();
-    for row in rows.iter() { row_sizes.push(row.size.clone()); }
-    return Sizing::from(row_sizes).to_lengths(*whole, *spacing);
-}
-
-fn cell_set_as_f32(cells: &Vec<Cell>, spacing: &f32, whole: &f32) -> Vec<f32> {
-    let mut row_sizes = Vec::new();
-    for row in cells.iter() { row_sizes.push(row.size.clone()); }
-    return Sizing::from(row_sizes).to_lengths(*whole, *spacing);
-}
-
-// This effectively reflects the rectangle on a line of symmetry where y=-x 
-// input for the rect being reflected, focal for the offset to the center of symmetry
-fn reflect(input: Rect, focal: Pos2) -> Rect {
-    let offset = input.min - focal;
-    Rect {
-        min: Pos2::new(offset.y + focal.x, offset.x + focal.y),
-        max: Pos2::new(offset.y + focal.x + input.height(), offset.x + focal.y + input.width())
-    }
+    pub fn rect(&self) -> Rect { self.rect }
+    pub fn layout(&self) -> Layout { self.layout }
+    pub fn clip(&self) -> bool { self.clip }
 }

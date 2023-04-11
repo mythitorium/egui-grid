@@ -11,6 +11,7 @@
 //!
 mod sizing;
 mod grid;
+mod helper;
 mod builder;
 
 pub use crate::grid::Grid;
