@@ -60,7 +60,7 @@ pub struct GridBuilder {
     creation_cache: Vec<(usize, usize)>,
     clip: bool,
     use_default_spacing: bool,
-    //fill_space: bool,
+    default_layout: Layout
 }
 
 impl GridBuilder {
@@ -72,8 +72,8 @@ impl GridBuilder {
             row_as_col: false,
             creation_cache: Vec::new(),
             clip: false,
-            use_default_spacing: true
-            //fill_space: false
+            use_default_spacing: true,
+            default_layout: Layout::default()
         }
     }
 
@@ -181,6 +181,15 @@ impl GridBuilder {
         self
     }
 
+    /// All cells allocated going forward will use this [`Layout`](https://docs.rs/egui/latest/egui/struct.Layout.html) as default. 
+    /// *Does not effect previously allocated cells*.
+    ///
+    /// This default will still be overridden by [`Self::with_layout`].
+    pub fn layout_standard(mut self, layout: Layout) -> Self {
+        self.default_layout = layout;
+        self
+    }   
+
     /// Nest a grid at the most recently allocated cell.
     /// Does nothing in the absence of any rows or the most recently allocated row being absent of any cells.
     ///
@@ -267,14 +276,14 @@ impl GridBuilder {
         self
     }
 
-    /// General purpose method for adding cells
+    // General purpose method for adding cells
     fn add_cells(&mut self, size: Size, amount: i32, margin: Margin) {
         let len = self.units.len();
         if len > 0 {
             let cel_len = self.units[len-1].cells.len();
             self.creation_cache = Vec::new();
             for c in 1..=amount {
-                self.units[len-1].cells.push(Cell::new(size, margin, Layout::default()));
+                self.units[len-1].cells.push(Cell::new(size, margin, self.default_layout));
                 self.creation_cache.push((len-1, cel_len+(c as usize)-1));
             }
         }
