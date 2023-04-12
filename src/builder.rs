@@ -79,6 +79,8 @@ impl GridBuilder {
 
     /// Set cell spacing. By default spacing is 0 on both axis.
     /// Spacing will not effect the spacing of any nested grids.
+    ///
+    /// If left unset, the Ui's item spacing will be used instead.
     pub fn spacing(mut self, width: f32, height: f32) -> Self {
         self.spacing = Vec2 { x: width, y: height };
         self.use_default_spacing = false;
@@ -86,6 +88,8 @@ impl GridBuilder {
     }
 
     /// Set cell spacing using a [`Vec2`](https://docs.rs/egui/latest/egui/struct.Vec2.html).
+    ///
+    /// If left unset, the Ui's item spacing will be used instead.
     pub fn spacing_vec2(mut self, spacing: Vec2) -> Self {
         self.spacing = spacing;
         self.use_default_spacing = false;
