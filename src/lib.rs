@@ -7,7 +7,7 @@
 //! with behavior similar to the StripBuilder found in eui_extras, though being much more compact and with additional features.
 //! 
 //! If you see any issues with this documentation, (typos, something that needs clarifying, etc), 
-//! let me (Mythitorium@4918) know on the [egui discord server](https://discord.gg/JFcEma9bJq).
+//! let me (Mythitorium#4918) know on the [egui discord server](https://discord.gg/JFcEma9bJq).
 //!
 mod sizing;
 mod grid;
