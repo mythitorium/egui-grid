@@ -1,4 +1,4 @@
-use egui::{Pos2, Rect};
+use egui::{Pos2, Rect, Vec2};
 use crate::{
     builder::{Cell, Row},
     sizing::Sizing
@@ -24,5 +24,13 @@ pub(crate) fn reflect(input: Rect, focal: Pos2) -> Rect {
     Rect {
         min: Pos2::new(offset.y + focal.x, offset.x + focal.y),
         max: Pos2::new(offset.y + focal.x + input.height(), offset.x + focal.y + input.width())
+    }
+}
+
+pub(crate) fn swap_spacing(spacing: Vec2, swap: bool) -> Vec2 {
+    if swap {
+        Vec2 { x: spacing.y, y: spacing.x }
+    } else {
+        spacing
     }
 }

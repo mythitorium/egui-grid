@@ -58,7 +58,9 @@ pub struct GridBuilder {
     spacing: Vec2,
     row_as_col: bool,
     creation_cache: Vec<(usize, usize)>,
-    clip: bool
+    clip: bool,
+    use_default_spacing: bool,
+    //fill_space: bool,
 }
 
 impl GridBuilder {
@@ -69,7 +71,9 @@ impl GridBuilder {
             spacing: Vec2::ZERO,
             row_as_col: false,
             creation_cache: Vec::new(),
-            clip: false
+            clip: false,
+            use_default_spacing: true
+            //fill_space: false
         }
     }
 
@@ -77,18 +81,14 @@ impl GridBuilder {
     /// Spacing will not effect the spacing of any nested grids.
     pub fn spacing(mut self, width: f32, height: f32) -> Self {
         self.spacing = Vec2 { x: width, y: height };
+        self.use_default_spacing = false;
         self
     }
 
     /// Set cell spacing using a [`Vec2`](https://docs.rs/egui/latest/egui/struct.Vec2.html).
-    pub fn spacing_vec2(mut self, vec: Vec2) -> Self {
-        self.spacing = vec;
-        self
-    }
-
-    /// Inherit spacing from a [`Ui`](https://docs.rs/egui/latest/egui/struct.Ui.html).
-    pub fn inherit_spacing(mut self, ui: &mut Ui) -> Self {
-        self.spacing = ui.style_mut().spacing.item_spacing.clone();
+    pub fn spacing_vec2(mut self, spacing: Vec2) -> Self {
+        self.spacing = spacing;
+        self.use_default_spacing = false;
         self
     }
 
@@ -239,8 +239,9 @@ impl GridBuilder {
     ///
     /// The cells of a nested grid will be represented in place of the cell that held it.
     pub fn show(self, ui: &mut Ui, grid: impl FnOnce(Grid)) -> Response {
+        //if self.use_default_spacing { self.spacing = ui.style_mut().spacing.item_spacing;  }
         let allocated_space = ui.available_rect_before_wrap();
-        let pure_cells = self.into_real_cells(allocated_space);
+        let pure_cells = self.into_real_cells(allocated_space, ui.style().spacing.item_spacing.clone());
         let mut bounds = Pos2::new(0., 0.);
 
         grid(Grid::new(ui, pure_cells, &mut bounds));
@@ -253,7 +254,6 @@ impl GridBuilder {
     ///
     /// Calling this method will ***NOT***
     /// - Propagate to nested grids.
-    /// - Affect the way cell spacing is applied. Rows will still use the 'height' component of item spacing, and width for cells.
     /// - Affect the grid creation process in any way. Rows will still be top-to-bottom and cells left-to-right until [`Self::show`] is called.
     /// - Affect the way margins are applied to cells.
     ///
@@ -277,26 +277,36 @@ impl GridBuilder {
     }
 
     // Turn sizes into rectangles and build PureCells
-    fn into_real_cells(&self, whole_rect: Rect) -> Vec<PureCell> {
+    fn into_real_cells(&self, whole_rect: Rect, def_spacing: Vec2) -> Vec<PureCell> {
         let mut cells_final = Vec::new();
 
-        let row_lengths = row_set_as_f32(&self.units, &self.spacing.y, &whole_rect.height());
+        // For row_as_col functionality
+        let whole_h; let whole_w;
+        if self.row_as_col { (whole_w, whole_h) = (whole_rect.height(), whole_rect.width()); }
+        else               { (whole_h, whole_w) = (whole_rect.height(), whole_rect.width()); }
+
+        // Spacing
+        let spacing;
+        if self.use_default_spacing { spacing = swap_spacing(def_spacing, self.row_as_col); }
+        else { spacing = swap_spacing(self.spacing, self.row_as_col); }
+
+        let row_lengths = row_set_as_f32(&self.units, &spacing.y, &whole_h);
 
         let mut pointer2d = Pos2::new(whole_rect.min.x,whole_rect.min.y);
         let mut row_index = 0;
         for row in self.units.iter() {
             // Get cell sizes
-            let cell_lengths = cell_set_as_f32(&row.cells, &self.spacing.x, &whole_rect.width());
+            let cell_lengths = cell_set_as_f32(&row.cells, &spacing.x, &whole_w);
 
             // sum of the lengths + spacing
-            let mut length_sum = -self.spacing.x; // minus spacing to counter balance the extra spacing added at the end of the for loop
-            for length in cell_lengths.iter() { length_sum += length + self.spacing.x; }
+            let mut length_sum = -spacing.x; // minus spacing to counter balance the extra spacing added at the end of the for loop
+            for length in cell_lengths.iter() { length_sum += length + spacing.x; }
             // apply align offset
             let grand_offset: f32 = { 
                 match &row.align {
                     Align::Min => { 0. },
-                    Align::Center => { (whole_rect.width() - length_sum) * 0.5 },
-                    Align::Max => { whole_rect.width() - length_sum }
+                    Align::Center => { (whole_w - length_sum) * 0.5 },
+                    Align::Max => { whole_w - length_sum }
                 }
             };
             pointer2d.x += grand_offset;
@@ -319,18 +329,18 @@ impl GridBuilder {
 
                 // Check and handle nested grids
                 match &row.cells[cell_index].group {
-                    Option::Some(grid) => { cells_final.extend(grid.into_real_cells(rect)); },
+                    Option::Some(grid) => { cells_final.extend(grid.into_real_cells(rect, def_spacing)); },
                     Option::None => { cells_final.push(PureCell::new(cell.get_layout(), self.clip, rect)); }
                 }
 
                 // Update indexes
-                pointer2d.x += cell_lengths[cell_index] + self.spacing.x;
+                pointer2d.x += cell_lengths[cell_index] + spacing.x;
                 cell_index += 1;
             }
     
             // Update indexes
             pointer2d.x = whole_rect.min.x.clone();
-            pointer2d.y += row_lengths[row_index] + self.spacing.y;
+            pointer2d.y += row_lengths[row_index] + spacing.y;
             row_index += 1;
         }
     
