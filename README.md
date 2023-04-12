@@ -1,5 +1,8 @@
 # egui_grid
 
+[![Latest version](https://img.shields.io/crates/v/egui_grid.svg)](https://crates.io/crates/egui_grid)
+[![Documentation](https://docs.rs/egui_grid/badge.svg)](https://docs.rs/egui_grid)
+
 Create dynamic grid layouts for [`egui`](https://github.com/emilk/egui).
 
 Grids are flexible, easy to create, with behavior similar to egui_extra's strip creation. They're compact and allow for more complex layouts using less indentation,
