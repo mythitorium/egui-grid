@@ -40,7 +40,12 @@ impl Grid<'_, '_> {
         if cell_rect.max.x > self.bounds.x { self.bounds.x = cell_rect.max.x; }
 
         let mut child_ui = self.ui.child_ui(cell_rect, cell_layout);
-        if cell.clip() { child_ui.set_clip_rect(cell_rect); }
+        if cell.clip() {
+            let margin = egui::Vec2::splat(self.ui.visuals().clip_rect_margin);
+            let margin = margin.min(0.5 * self.ui.spacing().item_spacing);
+            let clip_rect = cell_rect.expand2(margin);
+            child_ui.set_clip_rect(clip_rect.intersect(child_ui.clip_rect()));
+        }
         add_contents(&mut child_ui);
         self.pointer += 1;
     }
