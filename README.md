@@ -14,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-egui_grid = "0.1.0"
+egui_grid = "0.2.0"
 ```
 
 ## Example
