@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fixed `clip()` clipping too much
+- Fixed [`clip()`](https://docs.rs/egui_grid/latest/egui_grid/struct.GridBuilder.html#method.clip) clipping too much
 
 ### Changed
 
