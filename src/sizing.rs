@@ -1,6 +1,7 @@
 // I took this from egui's source
 // It turns Size into actual tangible numbers and I really really wasn't going to go about remaking this myself
 
+use egui::Rangef;
 use egui_extras::Size;
 
 #[derive(Clone, Default)]
@@ -26,7 +27,7 @@ impl Sizing {
                 Size::Absolute { initial, .. } => initial,
                 Size::Relative {
                     fraction,
-                    range: (min, max),
+                    range: Rangef { min, max },
                 } => {
                     assert!(0.0 <= fraction && fraction <= 1.0);
                     (length * fraction).clamp(min, max)
@@ -45,7 +46,10 @@ impl Sizing {
             let mut remainder_length = length - sum_non_remainder;
             let avg_remainder_length = 0.0f32.max(remainder_length / remainders as f32).floor();
             self.sizes.iter().for_each(|&size| {
-                if let Size::Remainder { range: (min, _max) } = size {
+                if let Size::Remainder {
+                    range: Rangef { min, max: _ },
+                } = size
+                {
                     if avg_remainder_length < min {
                         remainder_length -= min;
                         remainders -= 1;
@@ -65,9 +69,11 @@ impl Sizing {
                 Size::Absolute { initial, .. } => initial,
                 Size::Relative {
                     fraction,
-                    range: (min, max),
+                    range: Rangef { min, max },
                 } => (length * fraction).clamp(min, max),
-                Size::Remainder { range: (min, max) } => avg_remainder_length.clamp(min, max),
+                Size::Remainder {
+                    range: Rangef { min, max },
+                } => avg_remainder_length.clamp(min, max),
             })
             .collect()
     }
@@ -78,3 +84,4 @@ impl From<Vec<Size>> for Sizing {
         Self { sizes }
     }
 }
+
