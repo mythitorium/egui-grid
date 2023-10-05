@@ -9,9 +9,9 @@ pub struct Sizing {
 }
 
 impl Sizing {
-    //pub fn add(&mut self, size: Size) {
-    //    self.sizes.push(size);
-    //}
+    pub fn add(&mut self, size: Size) {
+        self.sizes.push(size);
+    }
 
     pub fn to_lengths(&self, length: f32, spacing: f32) -> Vec<f32> {
         if self.sizes.is_empty() {
@@ -24,12 +24,9 @@ impl Sizing {
             .iter()
             .map(|&size| match size {
                 Size::Absolute { initial, .. } => initial,
-                Size::Relative {
-                    fraction,
-                    range: (min, max),
-                } => {
+                Size::Relative { fraction, range } => {
                     assert!(0.0 <= fraction && fraction <= 1.0);
-                    (length * fraction).clamp(min, max)
+                    range.clamp(length * fraction)
                 }
                 Size::Remainder { .. } => {
                     remainders += 1;
@@ -45,9 +42,9 @@ impl Sizing {
             let mut remainder_length = length - sum_non_remainder;
             let avg_remainder_length = 0.0f32.max(remainder_length / remainders as f32).floor();
             self.sizes.iter().for_each(|&size| {
-                if let Size::Remainder { range: (min, _max) } = size {
-                    if avg_remainder_length < min {
-                        remainder_length -= min;
+                if let Size::Remainder { range } = size {
+                    if avg_remainder_length < range.min {
+                        remainder_length -= range.min;
                         remainders -= 1;
                     }
                 }
@@ -63,11 +60,8 @@ impl Sizing {
             .iter()
             .map(|&size| match size {
                 Size::Absolute { initial, .. } => initial,
-                Size::Relative {
-                    fraction,
-                    range: (min, max),
-                } => (length * fraction).clamp(min, max),
-                Size::Remainder { range: (min, max) } => avg_remainder_length.clamp(min, max),
+                Size::Relative { fraction, range } => range.clamp(length * fraction),
+                Size::Remainder { range } => range.clamp(avg_remainder_length),
             })
             .collect()
     }
