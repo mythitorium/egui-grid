@@ -76,8 +76,11 @@ GridBuilder::new()
     .cell(Size::remainder())
 
     .show(ui, |mut grid| {
-        // The nested grid replaces the cell it was nested in; And the cells within that nested grid replace it in the order, too.
-        // So despite there being 5 cells allocated total (2 from the nested grid and 3 from the main), only 4 exist.
+        // The nested grid replaces the cell it was nested in; 
+        // And the cells within that nested grid replace it in the order, too.
+        //
+        // So despite there being 5 cells allocated total 
+        // (2 from the nested grid and 3 from the main), only 4 exist.
         grid.cell(|ui| {
             ui.label("Left cell");
         });
