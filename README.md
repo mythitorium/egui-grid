@@ -14,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-egui_grid = "0.2.0"
+egui_grid = "0.3.0"
 ```
 
 ## Example
@@ -49,6 +49,46 @@ GridBuilder::new()
         grid.empty();
         grid.cell(|ui| {
             ui.label("Bottom row, right cell");
+        });
+    });
+```
+
+### Grid Nesting Example 
+
+```rust
+// You can nest grids, allowing for complex layouts without much indentation
+use egui_grid::GridBuilder;
+use egui_extras::Size;
+
+// The grid which will be nested
+let nested_grid = GridBuilder::new()
+    // 2 rows, with 1 cell each
+    .new_row(Size::remainder()).cell(Size::remainder())
+    .new_row(Size::remainder()).cell(Size::remainder());
+
+
+// The main grid, of which one cell will receive the nested grid
+GridBuilder::new()
+    // One row with 3 cells
+    .new_row(Size::remainder())
+    .cell(Size::remainder())
+    .cell(Size::remainder()) .nest(nested_grid) // Nesting the grid in the middle cell
+    .cell(Size::remainder())
+
+    .show(ui, |mut grid| {
+        // The nested grid replaces the cell it was nested in; And the cells within that nested grid replace it in the order, too.
+        // So despite there being 5 cells allocated total (2 from the nested grid and 3 from the main), only 4 exist.
+        grid.cell(|ui| {
+            ui.label("Left cell");
+        });
+        grid.cell(|ui| {
+            ui.label("Nested grid, top cell");
+        });
+        grid.cell(|ui| {
+            ui.label("Nested grid, bottom cell");
+        });
+        grid.cell(|ui| {
+            ui.label("Right cell");
         });
     });
 ```
