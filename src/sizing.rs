@@ -9,9 +9,10 @@ pub struct Sizing {
 }
 
 impl Sizing {
-    pub fn add(&mut self, size: Size) {
-        self.sizes.push(size);
-    }
+    // threw a warning, commented it out
+    //pub fn add(&mut self, size: Size) {
+    //    self.sizes.push(size);
+    //}
 
     pub fn to_lengths(&self, length: f32, spacing: f32) -> Vec<f32> {
         if self.sizes.is_empty() {
