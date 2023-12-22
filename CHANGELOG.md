@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2023-10-04
+
+### Changed
+
+- Update to `egui` 0.24.0
+- Update to `egui_extras` 0.24.0
+
 ## [0.3.0] - 2023-10-04
 
 ### Changed
