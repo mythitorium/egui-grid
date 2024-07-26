@@ -1,9 +1,6 @@
-use egui::{Rect, Pos2, Vec2, Margin, Align, Ui, Sense, Response, Layout};
+use crate::{grid::*, helper::*};
+use egui::{Align, Layout, Margin, Pos2, Rect, Response, Sense, Ui, Vec2};
 use egui_extras::Size;
-use crate::{
-    grid::*,
-    helper::*
-};
 
 /// Builder for creating a new [`Grid`].
 ///
@@ -60,12 +57,11 @@ pub struct GridBuilder {
     creation_cache: Vec<(usize, usize)>,
     clip: bool,
     use_default_spacing: bool,
-    default_layout: Layout
+    default_layout: Layout,
 }
 
-impl GridBuilder {
-    /// Create new grid builder.
-    pub fn new() -> GridBuilder {
+impl Default for GridBuilder {
+    fn default() -> Self {
         GridBuilder {
             units: Vec::new(),
             spacing: Vec2::ZERO,
@@ -73,8 +69,15 @@ impl GridBuilder {
             creation_cache: Vec::new(),
             clip: false,
             use_default_spacing: true,
-            default_layout: Layout::default()
+            default_layout: Layout::default(),
         }
+    }
+}
+
+impl GridBuilder {
+    /// Create new grid builder.
+    pub fn new() -> GridBuilder {
+        GridBuilder::default()
     }
 
     /// Set cell spacing. By default spacing is 0 on both axis.
@@ -82,7 +85,10 @@ impl GridBuilder {
     ///
     /// If left unset, the Ui's item spacing will be used instead.
     pub fn spacing(mut self, width: f32, height: f32) -> Self {
-        self.spacing = Vec2 { x: width, y: height };
+        self.spacing = Vec2 {
+            x: width,
+            y: height,
+        };
         self.use_default_spacing = false;
         self
     }
@@ -128,7 +134,7 @@ impl GridBuilder {
     pub fn align(mut self, align: Align) -> Self {
         let len = self.units.len();
         if len > 0 {
-            self.units[len-1].align(align);
+            self.units[len - 1].align(align);
         }
         self
     }
@@ -136,13 +142,15 @@ impl GridBuilder {
     /// Add a cell to the most recently allocated row. Cells are represented left-to-right.
     /// Does nothing unless at least one row has been allocated.
     pub fn cell(mut self, size: Size) -> Self {
-        self.add_cells(size, 1, Margin::same(0.)); self
+        self.add_cells(size, 1, Margin::same(0.));
+        self
     }
 
     /// Add multiple cells all with the same size to the most recently allocated row. Cells are represented left-to-right.
     /// Does nothing unless at least one row has been allocated.
     pub fn cells(mut self, size: Size, amount: i32) -> Self {
-        self.add_cells(size, amount, Margin::same(0.)); self
+        self.add_cells(size, amount, Margin::same(0.));
+        self
     }
 
     /// Give the most recently allocated cells a custom [`Margin`](https://docs.rs/egui/latest/egui/style/struct.Margin.html).
@@ -161,7 +169,7 @@ impl GridBuilder {
     /// ```
     pub fn with_margin(mut self, margin: Margin) -> Self {
         // the creation cache can only be bigger than one if cells and therefor rows have already been created.
-        if self.creation_cache.len() > 0 {
+        if !self.creation_cache.is_empty() {
             for item in self.creation_cache.iter() {
                 self.units[item.0].cells[item.1].edit_margin(margin);
             }
@@ -170,10 +178,10 @@ impl GridBuilder {
     }
 
     /// Give the most recently allocated cells a custom [`Layout`](https://docs.rs/egui/latest/egui/struct.Layout.html).
-    /// 
+    ///
     /// Behavior matches [`Self::with_margin`].
     pub fn with_layout(mut self, layout: Layout) -> Self {
-        if self.creation_cache.len() > 0 {
+        if !self.creation_cache.is_empty() {
             for item in self.creation_cache.iter() {
                 self.units[item.0].cells[item.1].edit_layout(layout);
             }
@@ -181,14 +189,14 @@ impl GridBuilder {
         self
     }
 
-    /// All cells allocated going forward will use this [`Layout`](https://docs.rs/egui/latest/egui/struct.Layout.html) as default. 
+    /// All cells allocated going forward will use this [`Layout`](https://docs.rs/egui/latest/egui/struct.Layout.html) as default.
     /// *Does not effect previously allocated cells*.
     ///
     /// This default will still be overridden by [`Self::with_layout`].
     pub fn layout_standard(mut self, layout: Layout) -> Self {
         self.default_layout = layout;
         self
-    }   
+    }
 
     /// Nest a grid at the most recently allocated cell.
     /// Does nothing in the absence of any rows or the most recently allocated row being absent of any cells.
@@ -203,7 +211,7 @@ impl GridBuilder {
     /// let parent_grid = GridBuilder::new()
     ///     .new_row(Size::remainder())
     ///     .cells(Size::remainder(), 2)
-    ///     // Despite being called after a batch cell allocation, 
+    ///     // Despite being called after a batch cell allocation,
     ///     // ONLY the last cell will have the grid nested
     ///     .nest(nested_grid)
     ///     .show(ui, |mut grid| {
@@ -228,9 +236,9 @@ impl GridBuilder {
         let len = self.units.len();
         if len > 0 {
             // get last
-            let cell_len = self.units[len-1].cells.len();
+            let cell_len = self.units[len - 1].cells.len();
             if cell_len > 0 {
-                self.units[len-1].cells[cell_len-1].nest(grid);
+                self.units[len - 1].cells[cell_len - 1].nest(grid);
             }
         }
         self
@@ -240,10 +248,8 @@ impl GridBuilder {
     pub fn nest_at(mut self, row: i32, cell: i32, grid: GridBuilder) -> Self {
         let u_row = row as usize;
         let u_cell = cell as usize;
-        if self.units.get(u_row).is_some() {
-            if self.units[u_row].cells.get(u_cell).is_some() {
-                self.units[u_row].cells[u_cell].nest(grid);
-            }
+        if self.units.get(u_row).is_some() && self.units[u_row].cells.get(u_cell).is_some() {
+            self.units[u_row].cells[u_cell].nest(grid);
         }
         self
     }
@@ -254,12 +260,18 @@ impl GridBuilder {
     pub fn show(self, ui: &mut Ui, grid: impl FnOnce(Grid)) -> Response {
         //if self.use_default_spacing { self.spacing = ui.style_mut().spacing.item_spacing;  }
         let allocated_space = ui.available_rect_before_wrap();
-        let pure_cells = self.into_real_cells(allocated_space, ui.style().spacing.item_spacing.clone());
+        let pure_cells = self.to_real_cells(allocated_space, ui.style().spacing.item_spacing);
         let mut bounds = Pos2::new(0., 0.);
 
         grid(Grid::new(ui, pure_cells, &mut bounds));
 
-        ui.allocate_rect(Rect{ min: allocated_space.min, max: bounds}, Sense::hover())
+        ui.allocate_rect(
+            Rect {
+                min: allocated_space.min,
+                max: bounds,
+            },
+            Sense::hover(),
+        )
     }
 
     /// Setting to `true` will result in rows acting as columns when [`Self::show`] is called (with the cells within being represented top-to-bottom instead of left-to-right).
@@ -280,98 +292,121 @@ impl GridBuilder {
     fn add_cells(&mut self, size: Size, amount: i32, margin: Margin) {
         let len = self.units.len();
         if len > 0 {
-            let cel_len = self.units[len-1].cells.len();
+            let cel_len = self.units[len - 1].cells.len();
             self.creation_cache = Vec::new();
             for c in 1..=amount {
-                self.units[len-1].cells.push(Cell::new(size, margin, self.default_layout));
-                self.creation_cache.push((len-1, cel_len+(c as usize)-1));
+                self.units[len - 1]
+                    .cells
+                    .push(Cell::new(size, margin, self.default_layout));
+                self.creation_cache
+                    .push((len - 1, cel_len + (c as usize) - 1));
             }
         }
     }
 
     // Turn sizes into rectangles and build PureCells
-    fn into_real_cells(&self, whole_rect: Rect, def_spacing: Vec2) -> Vec<PureCell> {
+    fn to_real_cells(&self, whole_rect: Rect, def_spacing: Vec2) -> Vec<PureCell> {
         let mut cells_final = Vec::new();
 
         // For row_as_col functionality
-        let whole_h; let whole_w;
-        if self.row_as_col { (whole_w, whole_h) = (whole_rect.height(), whole_rect.width()); }
-        else               { (whole_h, whole_w) = (whole_rect.height(), whole_rect.width()); }
+        let whole_h;
+        let whole_w;
+        if self.row_as_col {
+            (whole_w, whole_h) = (whole_rect.height(), whole_rect.width());
+        } else {
+            (whole_h, whole_w) = (whole_rect.height(), whole_rect.width());
+        }
 
         // Spacing
-        let spacing;
-        if self.use_default_spacing { spacing = swap_spacing(def_spacing, self.row_as_col); }
-        else { spacing = swap_spacing(self.spacing, self.row_as_col); }
+        let spacing = if self.use_default_spacing {
+            swap_spacing(def_spacing, self.row_as_col)
+        } else {
+            swap_spacing(self.spacing, self.row_as_col)
+        };
 
         let row_lengths = row_set_as_f32(&self.units, &spacing.y, &whole_h);
 
-        let mut pointer2d = Pos2::new(whole_rect.min.x,whole_rect.min.y);
-        let mut row_index = 0;
-        for row in self.units.iter() {
+        let mut pointer2d = Pos2::new(whole_rect.min.x, whole_rect.min.y);
+
+        for (row_index, row) in self.units.iter().enumerate() {
             // Get cell sizes
             let cell_lengths = cell_set_as_f32(&row.cells, &spacing.x, &whole_w);
 
             // sum of the lengths + spacing
             let mut length_sum = -spacing.x; // minus spacing to counter balance the extra spacing added at the end of the for loop
-            for length in cell_lengths.iter() { length_sum += length + spacing.x; }
+            for length in cell_lengths.iter() {
+                length_sum += length + spacing.x;
+            }
             // apply align offset
-            let grand_offset: f32 = { 
+            let grand_offset: f32 = {
                 match &row.align {
-                    Align::Min => { 0. },
-                    Align::Center => { (whole_w - length_sum) * 0.5 },
-                    Align::Max => { whole_w - length_sum }
+                    Align::Min => 0.,
+                    Align::Center => (whole_w - length_sum) * 0.5,
+                    Align::Max => whole_w - length_sum,
                 }
             };
             pointer2d.x += grand_offset;
 
-            let mut cell_index = 0;
-            for cell in row.cells.iter() {
+            for (cell_index, cell) in row.cells.iter().enumerate() {
                 // Build the rect
                 let mut rect = Rect {
-                    min: pointer2d.clone(),
-                    max: Pos2::new(pointer2d.x + cell_lengths[cell_index], pointer2d.y + row_lengths[row_index])
+                    min: pointer2d,
+                    max: Pos2::new(
+                        pointer2d.x + cell_lengths[cell_index],
+                        pointer2d.y + row_lengths[row_index],
+                    ),
                 };
 
                 // Apply verticality
-                if self.row_as_col { rect = reflect(rect, whole_rect.min); }
+                if self.row_as_col {
+                    rect = reflect(rect, whole_rect.min);
+                }
 
                 // Apply margins
                 let margin = &(row.cells[cell_index].margin);
-                rect.min.x += margin.left; rect.min.y += margin.top; 
-                rect.max.x -= margin.right; rect.max.y -= margin.bottom; 
+                rect.min.x += margin.left;
+                rect.min.y += margin.top;
+                rect.max.x -= margin.right;
+                rect.max.y -= margin.bottom;
 
                 // Check and handle nested grids
                 match &row.cells[cell_index].group {
-                    Option::Some(grid) => { cells_final.extend(grid.into_real_cells(rect, def_spacing)); },
-                    Option::None => { cells_final.push(PureCell::new(cell.get_layout(), self.clip, rect)); }
+                    Option::Some(grid) => {
+                        cells_final.extend(grid.to_real_cells(rect, def_spacing));
+                    }
+                    Option::None => {
+                        cells_final.push(PureCell::new(cell.get_layout(), self.clip, rect));
+                    }
                 }
 
                 // Update indexes
                 pointer2d.x += cell_lengths[cell_index] + spacing.x;
-                cell_index += 1;
             }
-    
+
             // Update indexes
-            pointer2d.x = whole_rect.min.x.clone();
+            pointer2d.x = whole_rect.min.x;
             pointer2d.y += row_lengths[row_index] + spacing.y;
-            row_index += 1;
         }
-    
+
         cells_final
     }
 }
 
-// Represents a row of cells. Useless on it's own, must be given to a GridBuilder. 
+// Represents a row of cells. Useless on it's own, must be given to a GridBuilder.
 #[derive(Clone)]
 pub(crate) struct Row {
     pub size: Size,
     cells: Vec<Cell>,
-    align: Align
+    align: Align,
 }
 
 impl Row {
     pub fn new(size: Size, align: Align) -> Row {
-        Row { size: size, cells: Vec::new(), align: align }
+        Row {
+            size,
+            cells: Vec::new(),
+            align,
+        }
     }
 
     fn align(&mut self, align: Align) {
@@ -390,7 +425,12 @@ pub(crate) struct Cell {
 
 impl Cell {
     pub fn new(size: Size, margin: Margin, layout: Layout) -> Cell {
-        Cell { size: size, group: None, margin: margin, layout: layout }
+        Cell {
+            size,
+            group: None,
+            margin,
+            layout,
+        }
     }
 
     // Nest a grid within this cell
@@ -398,28 +438,38 @@ impl Cell {
         self.group = Some(grid);
     }
 
-    pub fn edit_margin(&mut self, margin: Margin) { self.margin = margin; }
+    pub fn edit_margin(&mut self, margin: Margin) {
+        self.margin = margin;
+    }
 
-    pub fn edit_layout(&mut self, layout: Layout) { self.layout = layout; }
+    pub fn edit_layout(&mut self, layout: Layout) {
+        self.layout = layout;
+    }
 
-    pub fn get_layout(&self) -> Layout { self.layout }
+    pub fn get_layout(&self) -> Layout {
+        self.layout
+    }
 }
 
 // A cell with prepared info for the Grid to use to display it
 pub(crate) struct PureCell {
     rect: Rect,
     layout: Layout,
-    clip: bool
+    clip: bool,
 }
 
 impl PureCell {
     pub fn new(layout: Layout, clip: bool, rect: Rect) -> PureCell {
-        PureCell {
-            layout: layout, clip: clip, rect: rect
-        }
+        PureCell { layout, clip, rect }
     }
 
-    pub fn rect(&self) -> Rect { self.rect }
-    pub fn layout(&self) -> Layout { self.layout }
-    pub fn clip(&self) -> bool { self.clip }
+    pub fn rect(&self) -> Rect {
+        self.rect
+    }
+    pub fn layout(&self) -> Layout {
+        self.layout
+    }
+    pub fn clip(&self) -> bool {
+        self.clip
+    }
 }
