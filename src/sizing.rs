@@ -26,7 +26,7 @@ impl Sizing {
             .map(|&size| match size {
                 Size::Absolute { initial, .. } => initial,
                 Size::Relative { fraction, range } => {
-                    assert!(0.0 <= fraction && fraction <= 1.0);
+                    assert!((0.0..=1.0).contains(&fraction));
                     range.clamp(length * fraction)
                 }
                 Size::Remainder { .. } => {
